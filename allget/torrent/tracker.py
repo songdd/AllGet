@@ -3,7 +3,7 @@
 import asyncio, hashlib, logging, random, socket, struct, time
 from dataclasses import dataclass
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote_from_bytes
 import aiohttp
 from .metainfo import TorrentMeta
 
@@ -96,8 +96,8 @@ class TrackerClient:
 
     async def _announce_http(self, url, uploaded, downloaded, left, event):
         params = {
-            'info_hash': self.meta.info_hash,
-            'peer_id': self.peer_id,
+            'info_hash': quote_from_bytes(self.meta.info_hash),
+            'peer_id': quote_from_bytes(self.peer_id),
             'port': 6881,
             'uploaded': str(uploaded),
             'downloaded': str(downloaded),
