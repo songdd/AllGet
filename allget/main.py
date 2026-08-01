@@ -104,7 +104,7 @@ async def upload_torrent(file: UploadFile = File(...), save_path: str = Form("")
         torrent_path = os.path.join(sp, f".{task_id}.torrent")
         with open(torrent_path, "wb") as f:
             f.write(data)
-        asyncio.create_task(manager.start_torrent_from_file(torrent_path, sp))
+        asyncio.create_task(manager.start_torrent_from_file(torrent_path, sp, task_id))
         return {"task": task_to_dict(task)}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)

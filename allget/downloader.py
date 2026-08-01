@@ -161,12 +161,19 @@ class DownloadManager:
 
     async def add_peer_to_task(self, task_id, ip, port):
         """Manually add a peer to a running torrent task."""
+        import logging
+        log = logging.getLogger("allget")
         task = self.tasks.get(task_id)
         if not task:
+            log.warning(f"add_peer: task {task_id} not found in {list(self.tasks.keys())}")
             return False
-        if task._downloader and hasattr(task._downloader, "add_peer"):
-            return await task._downloader.add_peer(ip, int(port))
-        return False
+        if not task._downloader:
+            log.warning(f"add_peer: task {task_id} has no _downloader (status={task.status})")
+            return False
+        if not hasattr(task._downloader, "add_peer"):
+            log.warning(f"add_peer: task {task_id} _downloader has no add_peer method")
+            return False
+        return await task._downloader.add_peer(ip, int(port))
 
     async def delete_task(self, task_id):
         await self.stop_task(task_id)
@@ -181,16 +188,20 @@ class DownloadManager:
     def get_active_count(self):
         return sum(1 for t in self.tasks.values() if t.status == TaskStatus.DOWNLOADING)
 
-    async def start_torrent_from_file(self, file_path, save_path=None):
+    async def start_torrent_from_file(self, file_path, save_path=None, task_id=None):
         """Start a torrent download from a .torrent file."""
         sp = save_path or self.default_save_path
-        task_id = uuid.uuid4().hex[:12]
-        task = DownloadTask(
-            id=task_id, url=file_path, link_type=LinkType.MAGNET,
-            filename=os.path.basename(file_path), save_path=sp,
-            status=TaskStatus.DOWNLOADING,
-        )
-        self.tasks[task_id] = task
+        if task_id and task_id in self.tasks:
+            task = self.tasks[task_id]
+            task.status = TaskStatus.DOWNLOADING
+        else:
+            task_id = task_id or uuid.uuid4().hex[:12]
+            task = DownloadTask(
+                id=task_id, url=file_path, link_type=LinkType.MAGNET,
+                filename=os.path.basename(file_path), save_path=sp,
+                status=TaskStatus.DOWNLOADING,
+            )
+            self.tasks[task_id] = task
         self._notify(task)
         from .torrent.client import TorrentClient
         client = TorrentClient(

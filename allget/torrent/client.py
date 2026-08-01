@@ -305,12 +305,16 @@ class TorrentClient:
 
     async def add_peer(self, ip, port):
         """Manually add a peer to connect to."""
-        if self.peer_mgr:
-            conn = await self.peer_mgr.add_peer(ip, int(port))
-            if conn:
-                self._set_status(f"Connected to manual peer {ip}:{port}")
-                asyncio.create_task(conn.read_messages())
-                return True
+        if not self.peer_mgr:
+            logger.warning(f"add_peer: peer_mgr is None")
+            return False
+        logger.info(f"add_peer: connecting to {ip}:{port}...")
+        conn = await self.peer_mgr.add_peer(ip, int(port))
+        if conn:
+            self._set_status(f"Connected to manual peer {ip}:{port}")
+            asyncio.create_task(conn.read_messages())
+            return True
+        logger.warning(f"add_peer: connection to {ip}:{port} failed")
         return False
 
     async def stop(self):
