@@ -57,20 +57,14 @@ class PeerServer:
             try:
                 sock = writer.get_extra_info('socket')
                 sock.setsockopt(6, 1, 1)  # TCP_NODELAY
-                transport = writer.transport
-                transport.write(our)
-                bf = self._make_bitfield()
-                if bf:
-                    transport.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
-                transport.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
-                await asyncio.sleep(0.1)
             except Exception:
-                writer.write(our)
-                bf = self._make_bitfield()
-                if bf:
-                    writer.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
-                writer.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
-                await writer.drain()
+                pass
+            writer.write(our)
+            bf = self._make_bitfield()
+            if bf:
+                writer.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
+            writer.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
+            await writer.drain()
             logger.info(f"Handshake OK, sent to {addr[0]}:{addr[1]}")
 
             # Handle messages loop
@@ -131,9 +125,8 @@ class PeerServer:
                 data = bytes(data)
         except Exception:
             return
-        transport = writer.transport
-        transport.write(struct.pack(">IB", 1 + 12 + len(data), MessageID.PIECE) + struct.pack(">II", index, begin) + data)
-        await asyncio.sleep(0.1)
+        writer.write(struct.pack(">IB", 1 + 12 + len(data), MessageID.PIECE) + struct.pack(">II", index, begin) + data)
+        await writer.drain()
 
     async def _on_extended(self, writer, payload):
         if len(payload) < 1: return
