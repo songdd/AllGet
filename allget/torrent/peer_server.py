@@ -54,12 +54,22 @@ class PeerServer:
             reserved = bytearray(8)
             reserved[EXTENSION_BIT_BYTE] |= EXTENSION_BIT_MASK
             our = bytes([len(pstr)]) + pstr + bytes(reserved) + self.meta.info_hash + self._peer_id
-            writer.write(our)
-            bf = self._make_bitfield()
-            if bf:
-                writer.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
-            writer.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
-            await writer.drain()
+            try:
+                sock = writer.get_extra_info('socket')
+                sock.setsockopt(6, 1, 1)  # TCP_NODELAY
+                transport = writer.transport
+                transport.write(our)
+                bf = self._make_bitfield()
+                if bf:
+                    transport.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
+                transport.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
+            except Exception:
+                writer.write(our)
+                bf = self._make_bitfield()
+                if bf:
+                    writer.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
+                writer.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
+                await writer.drain()
             logger.info(f"Handshake OK, sent to {addr[0]}:{addr[1]}")
 
             # Handle messages loop
