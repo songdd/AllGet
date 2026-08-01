@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllGet - Download Manager</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>AllGet</span>
+    </div>
+    <div class="input-area">
+      <input type="text" id="urlInput" placeholder="Paste link here (HTTP, Magnet, ed2k, .torrent URL)">
+      <button id="btnAdd" class="btn btn-primary">Download</button>
+      <label class="btn btn-secondary torrent-btn" title="Upload .torrent file">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Torrent</span>
+        <input type="file" id="torrentFileInput" accept=".torrent" hidden>
+      </label>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="stats-bar" id="statsBar">
+      <span id="activeCount">0 active</span>
+      <span id="totalSpeed">0 B/s</span>
+    </div>
+    <div class="task-list" id="taskList">
+      <div class="empty-state" id="emptyState">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <p>Paste a download link or upload a torrent file to get started</p>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
