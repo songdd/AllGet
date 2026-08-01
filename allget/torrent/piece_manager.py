@@ -156,6 +156,7 @@ class PieceManager:
                 offset += write_len
 
     async def preallocate_files(self):
+        """Pre-allocate files, then hash-check any existing data."""
         for fi in self.meta.files:
             filepath = os.path.join(self.download_dir, fi.path)
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -163,6 +164,70 @@ class PieceManager:
                 with open(filepath, "wb") as f:
                     f.seek(fi.length - 1)
                     f.write(b"\x00")
+
+    async def verify_existing_data(self):
+        """Scan existing files and verify pieces against known hashes.
+        Call this after preallocation to detect already-downloaded data."""
+        if self.meta.total_size == 0:
+            return 0
+
+        # Check if all files exist with correct sizes
+        for fi in self.meta.files:
+            filepath = os.path.join(self.download_dir, fi.path)
+            if not os.path.exists(filepath):
+                return 0
+            if os.path.getsize(filepath) != fi.length:
+                return 0
+
+        logger.info(f"All files exist with correct sizes, running hash check...")
+        verified_count = 0
+
+        for piece_idx in range(self.piece_count):
+            if piece_idx in self._verified_pieces:
+                continue
+
+            piece_size = self.meta.piece_size(piece_idx)
+            piece_data = bytearray(piece_size)
+            piece_offset = piece_idx * self.meta.piece_length
+
+            # Read piece data from existing files
+            try:
+                remaining = piece_size
+                offset = piece_offset
+                read_pos = 0
+                while remaining > 0:
+                    file_info, file_offset = self.meta.file_for_offset(offset)
+                    filepath = os.path.join(self.download_dir, file_info.path)
+                    to_read = min(remaining, file_info.length - file_offset)
+                    with open(filepath, "rb") as f:
+                        f.seek(file_offset)
+                        chunk = f.read(to_read)
+                    piece_data[read_pos:read_pos+len(chunk)] = chunk
+                    read_pos += len(chunk)
+                    remaining -= len(chunk)
+                    offset += len(chunk)
+
+                computed = hashlib.sha1(bytes(piece_data)).digest()
+                expected = self._piece_hashes[piece_idx]
+
+                if computed == expected:
+                    self._verified_pieces.add(piece_idx)
+                    self.verified_bytes += piece_size
+                    self.downloaded_bytes += piece_size
+                    verified_count += 1
+            except Exception as e:
+                logger.warning(f"Hash check piece {piece_idx} error: {e}")
+                break
+
+        if verified_count > 0:
+            self._save_resume()
+            total = self.meta.total_size
+            pct = self.verified_bytes / total * 100 if total > 0 else 0
+            logger.info(f"Hash check: {verified_count}/{self.piece_count} pieces verified ({pct:.1f}%)")
+            if self.progress_callback:
+                self.progress_callback(self.progress, self.downloaded_bytes, self.meta.total_size)
+
+        return verified_count
 
     def cleanup(self):
         if os.path.exists(self._resume_file):

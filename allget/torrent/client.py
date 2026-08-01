@@ -37,6 +37,7 @@ class TorrentClient:
         self.download_speed = 0
         self._last_bytes = 0
         self._last_time = time.time()
+        self._file_already_complete = False
 
     async def start(self, data=None, torrent_path=None, magnet_uri=None):
         self._running = True
@@ -51,11 +52,20 @@ class TorrentClient:
             raise ValueError("No torrent source provided")
         if self.meta is None:
             raise ValueError("Failed to resolve torrent metadata")
+
         self._set_status(f"Downloading: {self.meta.name}")
         self.tracker = TrackerClient(self.meta)
         self.piece_mgr = PieceManager(self.meta, self.download_dir, self._on_progress)
+
         if self.meta.total_size > 0:
             await self.piece_mgr.preallocate_files()
+            verified = await self.piece_mgr.verify_existing_data()
+            if verified > 0:
+                self._set_status(f"Hash check: {verified}/{self.piece_mgr.piece_count} pieces OK")
+            if self.piece_mgr.is_complete:
+                self._file_already_complete = True
+                self._set_status("File already complete on disk!")
+
         self.peer_mgr = PeerManager(self.meta.info_hash, self.tracker.peer_id, max(self.meta.piece_count, 1))
         await self._download_loop()
 
@@ -165,6 +175,20 @@ class TorrentClient:
 
     async def _download_loop(self):
         urls = self._get_tracker_urls_for(self.meta)
+
+        # If file is already complete, skip to announce
+        if self._file_already_complete and self.dht:
+            self._set_status("Already complete, announcing to DHT...")
+            self.dht.register_downloaded(self.meta.info_hash, self.meta.total_size)
+            await self.dht.announce_to_dht(self.meta.info_hash)
+            self._set_status("Seed announced to DHT. Keeping server running.")
+            # Keep running to serve DHT queries
+            while self._running and not self._stop_event.is_set():
+                await asyncio.sleep(1)
+            if self.dht:
+                await self.dht.stop()
+            return
+
         self._set_status("Connecting to peers...")
         for url in urls:
             resp = await self.tracker.announce(url, left=self.meta.total_size, event="started")
@@ -190,7 +214,6 @@ class TorrentClient:
                     asyncio.create_task(self.dht.announce_to_dht(self.meta.info_hash))
                 break
             await self._process_peers()
-
             peer_refresh_count += 1
             if len(self.peer_mgr.connections) < 5 and peer_refresh_count % 10 == 0:
                 left = self.meta.total_size - (self.piece_mgr.verified_bytes if self.piece_mgr else 0)

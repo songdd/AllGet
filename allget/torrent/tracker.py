@@ -115,7 +115,7 @@ class TrackerClient:
                 data = await resp.read()
                 return self._parse_http_response(data)
         except Exception as e:
-            logger.warning(f"Tracker {url} error: {e}")
+            logger.warning(f"Tracker {url} error: {type(e).__name__}: {e}")
             return None
 
     def _parse_http_response(self, data):
