@@ -33,7 +33,7 @@ class PeerServer:
         addr = writer.get_extra_info("peername")
         logger.info(f"Incoming BT connection from {addr[0]}:{addr[1]}")
         try:
-            handshake = await asyncio.wait_for(reader.readexactly(68), timeout=10.0)
+            handshake = await asyncio.wait_for(reader.readexactly(68), timeout=15.0)
             logger.info(f"Handshake received: pstrlen={handshake[0]}, hash={handshake[28:48].hex()[:12]}...")
             if handshake[0] != 19:
                 logger.warning(f"Bad handshake pstrlen={handshake[0]} from {addr[0]}:{addr[1]}")
