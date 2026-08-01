@@ -69,6 +69,16 @@ class TorrentClient:
                     self._set_status("File already complete on disk!")
 
             self.peer_mgr = PeerManager(self.meta.info_hash, self.tracker.peer_id, max(self.meta.piece_count, 1))
+
+            # Start DHT if not already running (magnet path starts it earlier)
+            if not self.dht:
+                self.dht = DHTClient()
+                try:
+                    await self.dht.start()
+                except Exception as e:
+                    logger.warning(f"DHT start failed: {e}")
+                    self.dht = None
+
             await self._download_loop()
         finally:
             if self.peer_mgr:
