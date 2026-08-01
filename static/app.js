@@ -182,6 +182,9 @@ async function deleteTask(id) {
 
     taskList.innerHTML = "";
     taskList.appendChild(fragment);
+    taskList.querySelectorAll(".peer-connect-btn").forEach(function(btn) {
+        btn.onclick = function() { addPeer(this.dataset.taskid); };
+    });
     if (!hasTasks) {
       taskList.appendChild(emptyState);
     }
@@ -202,7 +205,7 @@ async function deleteTask(id) {
     var actionButtons = "";
     var peerInput = "";
     if (t.link_type === "magnet" || t.link_type === "torrent" || t.link_type === "https") {
-        peerInput = '<div class="peer-row"><input class="peer-input" type="text" placeholder="Add peer IP:port"><button class="btn btn-sm btn-secondary peer-btn" onclick="addPeer(\'" + t.id + "\')">Connect</button></div>';
+        peerInput = '<div class="peer-row"><input class="peer-input" type="text" placeholder="Add peer IP:port"><button class="btn btn-sm btn-secondary peer-btn peer-connect-btn" data-taskid="' + t.id + '">Connect</button></div>';
     }
     if (t.status === "downloading") {
       actionButtons += '<button class="btn btn-sm btn-secondary btn-pause" title="Pause"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>';
