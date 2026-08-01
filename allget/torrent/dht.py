@@ -112,6 +112,7 @@ class DHTClient:
         self._peer_found_event = asyncio.Event()
         # Store our own peer info for files we have
         self._seeding_info_hashes: dict[bytes, int] = {}  # info_hash -> total_size
+        self._peer_store: dict[bytes, list[tuple[str, int]]] = {}  # info_hash -> [(ip, port), ...]
         self._seeding_tokens: dict[bytes, dict[tuple, bytes]] = {}  # info_hash -> {addr: token}
 
     async def start(self):
@@ -335,9 +336,12 @@ class DHTClient:
             if token == expected and b'info_hash' in a:
                 info_hash = a[b'info_hash']
                 port_val = a.get(b'port', 6881)
-                # Store this as a known seed
                 key = (addr[0], port_val)
-                logger.debug(f"DHT received announce_peer for {info_hash.hex()[:12]} from {addr[0]}:{port_val}")
+                if info_hash not in self._peer_store:
+                    self._peer_store[info_hash] = []
+                if key not in self._peer_store[info_hash]:
+                    self._peer_store[info_hash].append(key)
+                    logger.info(f"DHT stored peer for {info_hash.hex()[:12]} from {addr[0]}:{port_val}")
                 self._send_response(addr, txn_id, {b'id': self.node_id})
 
     def _send_response(self, addr, txn_id, response):

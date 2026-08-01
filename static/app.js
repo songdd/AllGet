@@ -89,7 +89,27 @@
     await api("/api/tasks/" + id + "/stop", { method: "POST" });
   }
 
-  async function deleteTask(id) {
+  async function addPeer(id) {
+    var card = document.querySelector('.task-card[data-id="' + id + '"]');
+    if (!card) return;
+    var input = card.querySelector('.peer-input');
+    if (!input) return;
+    var val = input.value.trim();
+    if (!val) return;
+    var parts = val.split(':');
+    if (parts.length !== 2) { alert('Format: IP:port (e.g. 192.168.1.100:6882)'); return; }
+    var form = new FormData();
+    form.append('ip', parts[0]);
+    form.append('port', parts[1]);
+    try {
+        var data = await api('/api/tasks/' + id + '/peers', { method: 'POST', body: form });
+        if (data.error) alert('Error: ' + data.error);
+    } catch(err) {
+        alert('Failed: ' + err.message);
+    }
+}
+
+async function deleteTask(id) {
     await api("/api/tasks/" + id, { method: "DELETE" });
     delete tasks[id];
     render();
@@ -180,6 +200,10 @@
     var downText = fmtSize(t.downloaded_bytes || 0);
 
     var actionButtons = "";
+    var peerInput = "";
+    if (t.link_type === "magnet" || t.link_type === "torrent" || t.link_type === "https") {
+        peerInput = '<div class="peer-row"><input class="peer-input" type="text" placeholder="Add peer IP:port"><button class="btn btn-sm btn-secondary peer-btn" onclick="addPeer('' + t.id + '')">Connect</button></div>';
+    }
     if (t.status === "downloading") {
       actionButtons += '<button class="btn btn-sm btn-secondary btn-pause" title="Pause"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>';
       actionButtons += '<button class="btn btn-sm btn-secondary btn-stop" title="Stop"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>';
@@ -192,9 +216,11 @@
     actionButtons += '<button class="btn btn-sm btn-danger btn-delete" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>';
 
     var linkIcon = getLinkIcon(t.link_type);
-    var errorHTML = t.error ? '<div class="error-text">' + escapeHTML(t.error) + '</div>' : "";
+    var peerInput +
+      errorHTML = t.error ? '<div class="error-text">' + escapeHTML(t.error) + '</div>' : "";
 
     return (
+      peerInput +
       '<div class="task-header">' +
         '<div class="task-icon">' + linkIcon + '</div>' +
         '<div class="task-info">' +
@@ -217,6 +243,7 @@
           '<span>' + downText + ' / ' + sizeText + '</span>' +
         '</div>' +
       '</div>' +
+      peerInput +
       errorHTML
     );
   }

@@ -159,6 +159,15 @@ class DownloadManager:
             self.active_downloads[task_id].cancel()
             del self.active_downloads[task_id]
 
+    async def add_peer_to_task(self, task_id, ip, port):
+        """Manually add a peer to a running torrent task."""
+        task = self.tasks.get(task_id)
+        if not task:
+            return False
+        if task._downloader and hasattr(task._downloader, "add_peer"):
+            return await task._downloader.add_peer(ip, int(port))
+        return False
+
     async def delete_task(self, task_id):
         await self.stop_task(task_id)
         self.tasks.pop(task_id, None)

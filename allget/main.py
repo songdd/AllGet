@@ -129,6 +129,13 @@ async def delete_task(task_id: str):
     await manager.delete_task(task_id)
     return {"status": "ok"}
 
+@app.post("/api/tasks/{task_id}/peers")
+async def add_peer(task_id: str, ip: str = Form(...), port: int = Form(...)):
+    ok = await manager.add_peer_to_task(task_id, ip, port)
+    if ok:
+        return {"status": "ok"}
+    return JSONResponse({"error": "Task not found or not a torrent task"}, status_code=400)
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()

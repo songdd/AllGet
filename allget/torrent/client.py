@@ -5,6 +5,7 @@ from .tracker import TrackerClient
 from .peer import PeerManager, BLOCK_SIZE, METADATA_BLOCK_SIZE
 from .piece_manager import PieceManager
 from .dht import DHTClient
+from .peer_server import PeerServer
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class TorrentClient:
         self._last_bytes = 0
         self._last_time = time.time()
         self._file_already_complete = False
+        self._peer_server = None
 
     async def start(self, data=None, torrent_path=None, magnet_uri=None):
         """Entry point with guaranteed cleanup."""
@@ -79,12 +81,19 @@ class TorrentClient:
                     logger.warning(f"DHT start failed: {e}")
                     self.dht = None
 
+            # Start BT listen server for incoming peer connections
+            self._peer_server = PeerServer(self.meta, self.piece_mgr, self.download_dir)
+            await self._peer_server.start()
+            self._set_status(f"BT listening on port {self._peer_server.listen_port}")
+
             await self._download_loop()
         finally:
             if self.peer_mgr:
                 await self.peer_mgr.close_all()
             if self.tracker:
                 await self.tracker.close()
+            if self._peer_server:
+                await self._peer_server.stop()
             if self.dht:
                 await self.dht.stop()
 
@@ -200,6 +209,7 @@ class TorrentClient:
             self.dht.register_downloaded(self.meta.info_hash, self.meta.total_size)
             await self.dht.announce_to_dht(self.meta.info_hash)
             self._set_status("Seed announced to DHT. Keeping server running.")
+            self._set_status(f"Seed mode active on port {self._peer_server.listen_port}. Waiting for peers...")
             while self._running and not self._stop_event.is_set():
                 await asyncio.sleep(1)
             return
@@ -292,6 +302,16 @@ class TorrentClient:
         if meta.announce: urls.append(meta.announce)
         for tier in meta.announce_list: urls.extend(tier)
         return urls if urls else DEFAULT_TRACKERS
+
+    async def add_peer(self, ip, port):
+        """Manually add a peer to connect to."""
+        if self.peer_mgr:
+            conn = await self.peer_mgr.add_peer(ip, int(port))
+            if conn:
+                self._set_status(f"Connected to manual peer {ip}:{port}")
+                asyncio.create_task(conn.read_messages())
+                return True
+        return False
 
     async def stop(self):
         self._running = False; self._stop_event.set()

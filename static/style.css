@@ -254,6 +254,28 @@ body {
   font-size: 12px;
 }
 
+
+/* Peer input row */
+.peer-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.peer-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+.peer-input:focus { border-color: var(--accent); }
+.peer-input::placeholder { color: var(--text3); }
+.peer-btn { flex-shrink: 0; }
+
 @media (max-width: 640px) {
   .topbar { flex-direction: column; align-items: stretch; }
   .input-area { flex-wrap: wrap; }
