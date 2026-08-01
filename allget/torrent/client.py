@@ -82,8 +82,10 @@ class TorrentClient:
                     self.dht = None
 
             # Start BT listen server for incoming peer connections
+            logger.info(f"Starting PeerServer on port 6882...")
             self._peer_server = PeerServer(self.meta, self.piece_mgr, self.download_dir)
             await self._peer_server.start()
+            logger.info(f"PeerServer started on port {self._peer_server.listen_port}")
             self._set_status(f"BT listening on port {self._peer_server.listen_port}")
 
             await self._download_loop()
