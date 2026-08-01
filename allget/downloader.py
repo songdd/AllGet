@@ -120,7 +120,7 @@ class DownloadManager:
     def _on_progress(self, task, downloader, downloaded, total):
         task.downloaded_bytes = downloaded
         task.total_bytes = total or task.total_bytes
-        task.progress = getattr(downloader, "progress", 0)
+        task.progress = downloaded / total if total > 0 else 0.0
         task.download_speed = getattr(downloader, "download_speed", 0)
         self._notify(task)
 
@@ -128,7 +128,7 @@ class DownloadManager:
         task.download_speed = speed
         task.downloaded_bytes = downloaded
         task.total_bytes = total or task.total_bytes
-        task.progress = downloaded / total if total > 0 else 0
+        task.progress = downloaded / total if total > 0 else 0.0
         self._notify(task)
 
     def _notify(self, task):
