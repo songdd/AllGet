@@ -63,6 +63,7 @@ class PeerServer:
                 if bf:
                     transport.write(struct.pack(">IB", 1 + len(bf), MessageID.BITFIELD) + bf)
                 transport.write(struct.pack(">IB", 1, MessageID.UNCHOKE))
+                await asyncio.sleep(0)  # yield to flush on Windows Proactor
             except Exception:
                 writer.write(our)
                 bf = self._make_bitfield()
@@ -130,8 +131,9 @@ class PeerServer:
                 data = bytes(data)
         except Exception:
             return
-        writer.write(struct.pack(">IB", 1 + 12 + len(data), MessageID.PIECE) + struct.pack(">II", index, begin) + data)
-        await writer.drain()
+        transport = writer.transport
+        transport.write(struct.pack(">IB", 1 + 12 + len(data), MessageID.PIECE) + struct.pack(">II", index, begin) + data)
+        await asyncio.sleep(0)
 
     async def _on_extended(self, writer, payload):
         if len(payload) < 1: return
