@@ -34,10 +34,13 @@ class PeerServer:
         logger.info(f"Incoming BT connection from {addr[0]}:{addr[1]}")
         try:
             handshake = await asyncio.wait_for(reader.readexactly(68), timeout=10.0)
+            logger.info(f"Handshake received: pstrlen={handshake[0]}, hash={handshake[28:48].hex()[:12]}...")
             if handshake[0] != 19:
+                logger.warning(f"Bad handshake pstrlen={handshake[0]} from {addr[0]}:{addr[1]}")
                 writer.close(); return
             received_hash = handshake[28:48]
             if received_hash != self.meta.info_hash:
+                logger.warning(f"Info_hash mismatch from {addr[0]}:{addr[1]}: got {received_hash.hex()[:12]}, expected {self.meta.info_hash.hex()[:12]}")
                 writer.close(); return
             pstr = b"BitTorrent protocol"
             reserved = bytearray(8)
