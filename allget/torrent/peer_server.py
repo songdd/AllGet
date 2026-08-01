@@ -33,8 +33,13 @@ class PeerServer:
         addr = writer.get_extra_info("peername")
         logger.info(f"Incoming BT connection from {addr[0]}:{addr[1]}")
         try:
-            # Read handshake - NO wait_for, use raw readexactly
-            handshake = await reader.readexactly(68)
+            # Read handshake - loop to handle partial reads
+            handshake = b""
+            while len(handshake) < 68:
+                chunk = await reader.read(68 - len(handshake))
+                if not chunk:
+                    raise asyncio.IncompleteReadError(handshake, 68)
+                handshake += chunk
             logger.info(f"Handshake from {addr[0]}:{addr[1]}: pstrlen={handshake[0]}, hash={handshake[28:48].hex()[:12]}...")
             if handshake[0] != 19:
                 logger.warning(f"Bad pstrlen={handshake[0]}")
@@ -60,10 +65,18 @@ class PeerServer:
             # Handle messages loop
             while self._running:
                 try:
-                    raw_len = await reader.readexactly(4)
+                    raw_len = b""
+                    while len(raw_len) < 4:
+                        chunk = await reader.read(4 - len(raw_len))
+                        if not chunk: raise asyncio.IncompleteReadError(raw_len, 4)
+                        raw_len += chunk
                     length = struct.unpack(">I", raw_len)[0]
                     if length == 0: continue
-                    body = await reader.readexactly(length)
+                    body = b""
+                    while len(body) < length:
+                        chunk = await reader.read(length - len(body))
+                        if not chunk: raise asyncio.IncompleteReadError(body, length)
+                        body += chunk
                     msg_id = body[0]
                     payload = body[1:] if length > 1 else b""
                     if msg_id == MessageID.REQUEST:
