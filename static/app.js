@@ -216,8 +216,7 @@ async function deleteTask(id) {
     actionButtons += '<button class="btn btn-sm btn-danger btn-delete" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>';
 
     var linkIcon = getLinkIcon(t.link_type);
-    var peerInput +
-      errorHTML = t.error ? '<div class="error-text">' + escapeHTML(t.error) + '</div>' : "";
+    var errorHTML = t.error ? '<div class="error-text">' + escapeHTML(t.error) + '</div>' : "";
 
     return (
       peerInput +
